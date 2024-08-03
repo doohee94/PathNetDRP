@@ -70,6 +70,6 @@ python 4_LOOCV.py
 - For pathway data, we downloaded it from msigDB (https://www.gsea-msigdb.org/gsea/msigdb) and extracted only the Reactome data.
 
 
-## ETC
+## Contacts
 
-If you have any issues or questions about execution, please leave a comment through the repository and we will check.
+If you have any issues or questions about execution, please leave a comment through the repository and we will check. Or, please contact me via email: dohee_lee_@inu.ac.kr
