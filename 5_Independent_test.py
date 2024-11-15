@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.metrics import  roc_auc_score
-from sklearn.model_selection import StratifiedKFold
-from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.ensemble import AdaBoostClassifier
 
 exec(open('utilities.py').read())
 
@@ -29,35 +29,20 @@ for test_idx, test_cohort in enumerate(test_cohorts):
                 
     y_test = np.ravel(y_test)
     y_train = np.ravel(y_train)
-
-    # make predictions
-    C_param = np.arange(0.1, 1, 0.1)
-    kf = StratifiedKFold(n_splits=3, shuffle=True, random_state=50)
-
-    test_avg = []
-    for valid_index, test_index in kf.split(X_test, y_test) :
-
-        models = []
-        best = 0
-        best_index = 0
-        for j, c in enumerate(C_param) :
-            model = LogisticRegression(C=c, penalty = 'l2', max_iter=1000, solver='lbfgs', class_weight='balanced')
-            model.fit(X_train, y_train)
-            models.append(model)
     
-            X_valid, Y_valid = X_test[valid_index], y_test[valid_index]
-            test_x, test_y = X_test[test_index], y_test[test_index]
+    model = AdaBoostClassifier()
+    param_grid = {'n_estimators': [50,100,200],'learning_rate': [0.001, 0.005, 0.01, 0.05, 0.1],'algorithm': ['SAMME', 'SAMME.R']}
+   
+    auc_scores = []
     
-            valid_pred_proba = model.predict_proba(X_valid)[:,1]
-            valid_auc = roc_auc_score(Y_valid, valid_pred_proba) 
+    for i in range(10) :
+        
+        sfkf = StratifiedKFold(n_splits=5, shuffle=True, random_state=i)
+        gcv = GridSearchCV(model, param_grid=param_grid, cv=sfkf, scoring='roc_auc', n_jobs=10).fit(X_train, y_train)
+        pred_status = gcv.best_estimator_.predict(X_test)
+        pred_proba = gcv.best_estimator_.predict_proba(X_test)[:,1]
 
-            if valid_auc > best :
-                best = valid_auc
-                best_index = j
-
-        final_model = models[best_index]
-        test_pred_proba = final_model.predict_proba(test_x)[:,1]
-        test_auc = roc_auc_score(test_y, test_pred_proba) 
-        test_avg.append(test_auc)
-
-    print(f'Final AVG AUC = {np.mean(test_avg)}')
+        aucs = roc_auc_score(y_test, pred_proba)
+        auc_scores.append(aucs)
+        
+    print(f'{test_cohort} AUC : {round(np.mean(auc_scores), 3)} ± {"{:.2e}".format(np.std(auc_scores))}')
